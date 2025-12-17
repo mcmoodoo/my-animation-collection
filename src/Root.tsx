@@ -30,7 +30,6 @@ export const RemotionRoot: React.FC = () => {
           logoColor2: "#86A8E7",
         }}
       />
-
       {/* Mount any React component to make it show up in the sidebar and work on it individually! */}
       <Composition
         id="OnlyLogo"
@@ -45,7 +44,6 @@ export const RemotionRoot: React.FC = () => {
           logoColor2: "#86A8E7" as const,
         }}
       />
-
       <Composition
         id="WalletAnimation"
         component={WalletAnimation}
@@ -54,20 +52,10 @@ export const RemotionRoot: React.FC = () => {
         width={1920}
         height={1080}
       />
-
       <Composition
         id="TransferAnimation"
         component={TransferAnimation}
         durationInFrames={400}
-        fps={30}
-        width={1920}
-        height={1080}
-      />
-
-      <Composition
-        id="MoneyFlowAnimation"
-        component={MoneyFlowAnimation}
-        durationInFrames={250}
         fps={30}
         width={1920}
         height={1080}
