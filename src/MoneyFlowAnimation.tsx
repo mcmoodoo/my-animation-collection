@@ -68,22 +68,31 @@ export const MoneyFlowAnimation: React.FC = () => {
 
   // Create multiple money bills flowing to the safe destination
   // Each bill has slight offset at destination to create a stack/pile effect
+  // Each bill has a value for accounting
+  const billValue = 100; // Each bill is worth $100
   const moneyBills = [
-    { delay: 0, offsetX: 0, offsetY: 0, rotation: 0, scale: 0.6 },
-    { delay: 8, offsetX: 15, offsetY: -10, rotation: 5, scale: 0.65 },
-    { delay: 16, offsetX: -10, offsetY: -5, rotation: -8, scale: 0.6 },
-    { delay: 24, offsetX: 20, offsetY: -15, rotation: 10, scale: 0.7 },
-    { delay: 32, offsetX: -5, offsetY: -8, rotation: -5, scale: 0.65 },
-    { delay: 40, offsetX: 10, offsetY: -12, rotation: 8, scale: 0.6 },
-    { delay: 48, offsetX: -15, offsetY: -3, rotation: -10, scale: 0.65 },
-    { delay: 56, offsetX: 5, offsetY: -18, rotation: 3, scale: 0.6 },
+    { delay: 0, offsetX: 0, offsetY: 0, rotation: 0, scale: 0.6, value: billValue },
+    { delay: 8, offsetX: 15, offsetY: -10, rotation: 5, scale: 0.65, value: billValue },
+    { delay: 16, offsetX: -10, offsetY: -5, rotation: -8, scale: 0.6, value: billValue },
+    { delay: 24, offsetX: 20, offsetY: -15, rotation: 10, scale: 0.7, value: billValue },
+    { delay: 32, offsetX: -5, offsetY: -8, rotation: -5, scale: 0.65, value: billValue },
+    { delay: 40, offsetX: 10, offsetY: -12, rotation: 8, scale: 0.6, value: billValue },
+    { delay: 48, offsetX: -15, offsetY: -3, rotation: -10, scale: 0.65, value: billValue },
+    { delay: 56, offsetX: 5, offsetY: -18, rotation: 3, scale: 0.6, value: billValue },
   ];
 
-  // Calculate safe scale based on bills that have arrived
-  // Each bill arrival triggers growth incrementally
+  const totalWalletValue = moneyBills.length * billValue; // Starting wallet balance
+
+  // Calculate safe scale and balances based on bills that have arrived/left
+  // Each bill arrival triggers safe growth, each bill departure triggers wallet shrinkage
   const safeScaleBase = 0.3; // Start small
+  const walletScaleBase = 1.0; // Start at full size
   const scalePerBill = (1.1 - safeScaleBase) / moneyBills.length; // Distribute growth across all bills
   
+  // Calculate balances and safe scale
+  let safeBalance = 0;
+  
+  // Calculate safe scale and balance based on bills that have arrived
   const safeScale = moneyBills.reduce((currentScale, bill) => {
     const billFrame = frame - moneyFlowStart - bill.delay;
     if (billFrame < 0) return currentScale;
@@ -97,9 +106,23 @@ export const MoneyFlowAnimation: React.FC = () => {
       },
     });
     
+    // Calculate how much of this bill's value has transferred
+    // Transfer happens gradually as bill moves (0% at wallet, 100% at safe)
+    const transferProgress = interpolate(
+      billProgress,
+      [0, 1],
+      [0, 1],
+      {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      }
+    );
+    
+    // Accumulate balance (this runs for each bill)
+    safeBalance += bill.value * transferProgress;
+    
     // When bill reaches destination (progress >= 0.8), trigger safe growth
     if (billProgress >= 0.8) {
-      // Each bill adds growth incrementally as it arrives
       const growthProgress = interpolate(
         billProgress,
         [0.8, 1],
@@ -109,13 +132,23 @@ export const MoneyFlowAnimation: React.FC = () => {
           extrapolateRight: "clamp",
         }
       );
-      
-      // Each bill contributes its portion of the total growth
       return currentScale + scalePerBill * growthProgress;
     }
     
     return currentScale;
   }, safeScaleBase);
+  const walletBalance = totalWalletValue - safeBalance;
+
+  // Wallet shrinks as bills leave (opposite of safe growth)
+  const walletScale = interpolate(
+    safeScale,
+    [safeScaleBase, 1.1],
+    [walletScaleBase, 0.5],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    }
+  );
 
   return (
     <AbsoluteFill
@@ -126,11 +159,11 @@ export const MoneyFlowAnimation: React.FC = () => {
         backgroundColor: "transparent",
       }}
     >
-      {/* Wallet */}
+      {/* Wallet - shrinks as money flows out */}
       <div
         style={{
           opacity,
-          transform: `scale(${scale}) rotate(${rotation}deg)`,
+          transform: `scale(${scale * walletScale}) rotate(${rotation}deg)`,
           transition: "transform 0.3s ease-out",
           position: "relative",
           zIndex: 1,
@@ -145,6 +178,25 @@ export const MoneyFlowAnimation: React.FC = () => {
             display: "block",
           }}
         />
+        {/* Wallet Balance Display */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "-60px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            color: "white",
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontSize: "20px",
+            fontWeight: "bold",
+            whiteSpace: "nowrap",
+            fontFamily: "monospace",
+          }}
+        >
+          Wallet: ${Math.round(walletBalance).toLocaleString()}
+        </div>
       </div>
 
       {/* Safe destination - grows as bills arrive */}
@@ -176,6 +228,25 @@ export const MoneyFlowAnimation: React.FC = () => {
             display: "block",
           }}
         />
+        {/* Safe Balance Display */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "-60px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "rgba(36, 115, 150, 0.9)",
+            color: "white",
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontSize: "20px",
+            fontWeight: "bold",
+            whiteSpace: "nowrap",
+            fontFamily: "monospace",
+          }}
+        >
+          Safe: ${Math.round(safeBalance).toLocaleString()}
+        </div>
       </div>
 
       {/* Money bills flowing to safe destination */}
