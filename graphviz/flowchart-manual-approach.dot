@@ -1,0 +1,19 @@
+digraph USDC_Sweeper {
+    rankdir=LR;
+    node [shape=box, style=rounded, fontname="Arial"];
+
+    SourceWallet [label="Source Wallet\n(Holds USDC)"];
+    Keeper [label="Keeper\n(Lambda / Bot)"];
+    SafeWallet [label="Safe Wallet\n(Receives USDC)"];
+    RPC [label="RPC Endpoint\n(Blockchain)"];
+
+    // Actions
+    SourceWallet -> Keeper [label="USDC.approve(keeper, amount)", color=blue];
+    Keeper -> RPC [label="Check balance / Listen to Transfer events", color=green];
+    Keeper -> SafeWallet [label="USDC.transferFrom(source, safe, balance)", color=red];
+    Keeper -> RPC [label="Send transaction (gas paid by keeper)", style=dashed];
+
+    // Optional triggers
+    Event [label="Cron or Event Trigger", shape=diamond];
+    Event -> Keeper [label="Run keeper", style=dotted];
+}
