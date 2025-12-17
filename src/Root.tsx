@@ -3,6 +3,7 @@ import { Composition } from "remotion";
 import { HelloWorld, myCompSchema } from "./HelloWorld";
 import { Logo, myCompSchema2 } from "./HelloWorld/Logo";
 import { WalletAnimation } from "./WalletAnimation";
+import { TransferAnimation } from "./TransferAnimation";
 import { MoneyFlowAnimation } from "./MoneyFlowAnimation";
 
 // Each <Composition> is an entry in the sidebar!
@@ -48,6 +49,15 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="WalletAnimation"
         component={WalletAnimation}
+        durationInFrames={180}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+
+      <Composition
+        id="TransferAnimation"
+        component={TransferAnimation}
         durationInFrames={180}
         fps={30}
         width={1920}
