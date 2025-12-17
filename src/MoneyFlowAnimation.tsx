@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import walletSvg from "./assets/wallet.svg";
-import moneySvg from "./assets/money.svg";
+import usdcSvg from "./assets/usdc.svg";
 import safeSvg from "./assets/safe.svg";
 
 export const MoneyFlowAnimation: React.FC = () => {
@@ -61,6 +61,9 @@ export const MoneyFlowAnimation: React.FC = () => {
 
   // Money flow animation - starts after wallet appears
   const moneyFlowStart = 30;
+  
+  // Threshold: money only flows when wallet balance exceeds this amount
+  const flowThreshold = 100;
 
   // Safe destination location (top-right area)
   const safeDestinationX = 400;
@@ -89,13 +92,13 @@ export const MoneyFlowAnimation: React.FC = () => {
   const walletScaleBase = 1.0; // Start at full size
   const scalePerBill = (1.1 - safeScaleBase) / moneyBills.length; // Distribute growth across all bills
   
-  // Calculate balances and safe scale
+  // Calculate balances first to determine if threshold is reached
   let safeBalance = 0;
   
-  // Calculate safe scale and balance based on bills that have arrived
-  const safeScale = moneyBills.reduce((currentScale, bill) => {
+  // Calculate current wallet balance based on bills that have already transferred
+  moneyBills.forEach((bill) => {
     const billFrame = frame - moneyFlowStart - bill.delay;
-    if (billFrame < 0) return currentScale;
+    if (billFrame < 0) return;
     
     const billProgress = spring({
       frame: billFrame,
@@ -106,8 +109,6 @@ export const MoneyFlowAnimation: React.FC = () => {
       },
     });
     
-    // Calculate how much of this bill's value has transferred
-    // Transfer happens gradually as bill moves (0% at wallet, 100% at safe)
     const transferProgress = interpolate(
       billProgress,
       [0, 1],
@@ -118,8 +119,32 @@ export const MoneyFlowAnimation: React.FC = () => {
       }
     );
     
-    // Accumulate balance (this runs for each bill)
     safeBalance += bill.value * transferProgress;
+  });
+  
+  const walletBalance = totalWalletValue - safeBalance;
+  
+  // Check if threshold is reached - once wallet reaches threshold, transfer everything
+  const thresholdReached = walletBalance >= flowThreshold;
+  
+  // Calculate safe scale based on bills that have arrived
+  const safeScale = moneyBills.reduce((currentScale, bill) => {
+    const billFrame = frame - moneyFlowStart - bill.delay;
+    if (billFrame < 0) return currentScale;
+    
+    // Only allow flow if threshold is reached
+    if (!thresholdReached) {
+      return currentScale;
+    }
+    
+    const billProgress = spring({
+      frame: billFrame,
+      fps,
+      config: {
+        damping: 60,
+        stiffness: 120,
+      },
+    });
     
     // When bill reaches destination (progress >= 0.8), trigger safe growth
     if (billProgress >= 0.8) {
@@ -137,7 +162,6 @@ export const MoneyFlowAnimation: React.FC = () => {
     
     return currentScale;
   }, safeScaleBase);
-  const walletBalance = totalWalletValue - safeBalance;
 
   // Wallet shrinks as bills leave (opposite of safe growth)
   const walletScale = interpolate(
@@ -249,9 +273,40 @@ export const MoneyFlowAnimation: React.FC = () => {
         </div>
       </div>
 
+      {/* Threshold Display */}
+      <div
+        style={{
+          position: "absolute",
+          top: "20px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          backgroundColor: thresholdReached ? "rgba(76, 175, 80, 0.9)" : "rgba(255, 152, 0, 0.9)",
+          color: "white",
+          padding: "12px 24px",
+          borderRadius: "8px",
+          fontSize: "24px",
+          fontWeight: "bold",
+          whiteSpace: "nowrap",
+          fontFamily: "monospace",
+          zIndex: 10,
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.3)",
+        }}
+      >
+        Threshold: ${flowThreshold.toLocaleString()}
+        {thresholdReached && (
+          <span style={{ marginLeft: "12px", fontSize: "18px" }}>✓ Transferring...</span>
+        )}
+      </div>
+
       {/* Money bills flowing to safe destination */}
       {moneyBills.map((bill, index) => {
         const billFrame = frame - moneyFlowStart - bill.delay;
+        
+        // Only allow bill to flow if threshold is reached
+        if (!thresholdReached) {
+          return null;
+        }
+        
         const billProgress = spring({
           frame: billFrame,
           fps,
@@ -355,8 +410,8 @@ export const MoneyFlowAnimation: React.FC = () => {
             }}
           >
             <img
-              src={moneySvg}
-              alt="Money"
+              src={usdcSvg}
+              alt="USDC"
               style={{
                 width: "120px",
                 height: "120px",
