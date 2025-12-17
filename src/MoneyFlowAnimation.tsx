@@ -1,6 +1,7 @@
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import walletSvg from "./assets/wallet.svg";
 import moneySvg from "./assets/money.svg";
+import safeSvg from "./assets/safe.svg";
 
 export const MoneyFlowAnimation: React.FC = () => {
   const frame = useCurrentFrame();
@@ -61,17 +62,60 @@ export const MoneyFlowAnimation: React.FC = () => {
   // Money flow animation - starts after wallet appears
   const moneyFlowStart = 30;
 
-  // Create multiple money bills with different trajectories
+  // Safe destination location (top-right area)
+  const safeDestinationX = 400;
+  const safeDestinationY = -250;
+
+  // Create multiple money bills flowing to the safe destination
+  // Each bill has slight offset at destination to create a stack/pile effect
   const moneyBills = [
-    { delay: 0, x: 200, y: -150, rotation: 15, scale: 0.6 },
-    { delay: 5, x: 300, y: -100, rotation: -20, scale: 0.7 },
-    { delay: 10, x: 250, y: -200, rotation: 30, scale: 0.65 },
-    { delay: 15, x: 350, y: -80, rotation: -15, scale: 0.55 },
-    { delay: 20, x: 180, y: -120, rotation: 25, scale: 0.6 },
-    { delay: 25, x: 400, y: -150, rotation: -30, scale: 0.65 },
-    { delay: 30, x: 280, y: -180, rotation: 20, scale: 0.7 },
-    { delay: 35, x: 320, y: -100, rotation: -25, scale: 0.6 },
+    { delay: 0, offsetX: 0, offsetY: 0, rotation: 0, scale: 0.6 },
+    { delay: 8, offsetX: 15, offsetY: -10, rotation: 5, scale: 0.65 },
+    { delay: 16, offsetX: -10, offsetY: -5, rotation: -8, scale: 0.6 },
+    { delay: 24, offsetX: 20, offsetY: -15, rotation: 10, scale: 0.7 },
+    { delay: 32, offsetX: -5, offsetY: -8, rotation: -5, scale: 0.65 },
+    { delay: 40, offsetX: 10, offsetY: -12, rotation: 8, scale: 0.6 },
+    { delay: 48, offsetX: -15, offsetY: -3, rotation: -10, scale: 0.65 },
+    { delay: 56, offsetX: 5, offsetY: -18, rotation: 3, scale: 0.6 },
   ];
+
+  // Calculate safe scale based on bills that have arrived
+  // Each bill arrival triggers growth incrementally
+  const safeScaleBase = 0.3; // Start small
+  const scalePerBill = (1.1 - safeScaleBase) / moneyBills.length; // Distribute growth across all bills
+  
+  const safeScale = moneyBills.reduce((currentScale, bill) => {
+    const billFrame = frame - moneyFlowStart - bill.delay;
+    if (billFrame < 0) return currentScale;
+    
+    const billProgress = spring({
+      frame: billFrame,
+      fps,
+      config: {
+        damping: 60,
+        stiffness: 120,
+      },
+    });
+    
+    // When bill reaches destination (progress >= 0.8), trigger safe growth
+    if (billProgress >= 0.8) {
+      // Each bill adds growth incrementally as it arrives
+      const growthProgress = interpolate(
+        billProgress,
+        [0.8, 1],
+        [0, 1],
+        {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        }
+      );
+      
+      // Each bill contributes its portion of the total growth
+      return currentScale + scalePerBill * growthProgress;
+    }
+    
+    return currentScale;
+  }, safeScaleBase);
 
   return (
     <AbsoluteFill
@@ -103,23 +147,54 @@ export const MoneyFlowAnimation: React.FC = () => {
         />
       </div>
 
-      {/* Money bills flowing out */}
+      {/* Safe destination - grows as bills arrive */}
+      <div
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          transform: `translate(${safeDestinationX}px, ${safeDestinationY}px) scale(${safeScale})`,
+          transformOrigin: "center center",
+          pointerEvents: "none",
+          opacity: interpolate(
+            fadeIn,
+            [0, 1],
+            [0, 1],
+            {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            }
+          ),
+        }}
+      >
+        <img
+          src={safeSvg}
+          alt="Safe"
+          style={{
+            width: "250px",
+            height: "250px",
+            display: "block",
+          }}
+        />
+      </div>
+
+      {/* Money bills flowing to safe destination */}
       {moneyBills.map((bill, index) => {
         const billFrame = frame - moneyFlowStart - bill.delay;
         const billProgress = spring({
           frame: billFrame,
           fps,
           config: {
-            damping: 50,
-            stiffness: 100,
+            damping: 60,
+            stiffness: 120,
           },
         });
 
-        // Position animation - flows out from wallet
+        // Position animation - flows from wallet to safe destination
         const translateX = interpolate(
           billProgress,
           [0, 1],
-          [0, bill.x],
+          [0, safeDestinationX + bill.offsetX],
           {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
@@ -129,14 +204,14 @@ export const MoneyFlowAnimation: React.FC = () => {
         const translateY = interpolate(
           billProgress,
           [0, 1],
-          [0, bill.y],
+          [0, safeDestinationY + bill.offsetY],
           {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }
         );
 
-        // Rotation animation
+        // Rotation animation - settles at destination
         const billRotation = interpolate(
           billProgress,
           [0, 1],
@@ -147,22 +222,45 @@ export const MoneyFlowAnimation: React.FC = () => {
           }
         );
 
-        // Scale animation - starts small, grows, then shrinks as it fades
+        // Scale animation - starts small, grows to full size, stays at destination
         const billScale = interpolate(
           billProgress,
-          [0, 0.3, 1],
-          [0.3, bill.scale, bill.scale * 0.8],
+          [0, 0.4, 1],
+          [0.3, bill.scale, bill.scale],
           {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }
         );
 
-        // Opacity - fades in then out
+        // Opacity - fades in and stays visible (doesn't fade out)
         const billOpacity = interpolate(
           billProgress,
-          [0, 0.2, 0.8, 1],
-          [0, 1, 1, 0],
+          [0, 0.3, 1],
+          [0, 1, 1],
+          {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }
+        );
+
+        // Subtle bounce/settle animation when reaching destination
+        const settleBounce = billProgress >= 0.9
+          ? interpolate(
+              billFrame,
+              [moneyFlowStart + bill.delay + 27, moneyFlowStart + bill.delay + 35],
+              [0, 1],
+              {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              }
+            )
+          : 0;
+
+        const settleY = interpolate(
+          settleBounce,
+          [0, 0.5, 1],
+          [0, -5, 0],
           {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
@@ -178,10 +276,11 @@ export const MoneyFlowAnimation: React.FC = () => {
               position: "absolute",
               left: "50%",
               top: "50%",
-              transform: `translate(${translateX}px, ${translateY}px) rotate(${billRotation}deg) scale(${billScale})`,
+              transform: `translate(${translateX}px, ${translateY + settleY}px) rotate(${billRotation}deg) scale(${billScale})`,
               opacity: billOpacity,
               transformOrigin: "center center",
               pointerEvents: "none",
+              zIndex: 2,
             }}
           >
             <img
