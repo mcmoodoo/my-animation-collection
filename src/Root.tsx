@@ -48,7 +48,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="WalletAnimation"
         component={WalletAnimation}
-        durationInFrames={90}
+        durationInFrames={180}
         fps={30}
         width={1920}
         height={1080}
@@ -57,7 +57,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="MoneyFlowAnimation"
         component={MoneyFlowAnimation}
-        durationInFrames={120}
+        durationInFrames={250}
         fps={30}
         width={1920}
         height={1080}
