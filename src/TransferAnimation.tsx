@@ -132,6 +132,22 @@ export const TransferAnimation: React.FC = () => {
     ? Math.max(0, frozenWalletBalance - safeTokenBalance)
     : walletTokenBalance;
 
+  // Check if threshold (12 tokens) has been reached
+  const thresholdReached = Math.round(currentWalletBalance) >= 12 && !isTransferPhase;
+
+  // Blinking animation for threshold reached
+  const blinkOpacity = thresholdReached
+    ? interpolate(
+        frame % 20, // Blink every 20 frames (faster blink)
+        [0, 10, 20],
+        [1, 0.2, 1],
+        {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        }
+      )
+    : 1;
+
   // ===== WALLET SCALE =====
   const walletScaleBase = 0.3;
   const walletScaleMax = 1.0;
@@ -297,7 +313,7 @@ export const TransferAnimation: React.FC = () => {
           left: "50%",
           top: "50%",
           transform: "translate(-50%, calc(-50% - 250px))",
-          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          backgroundColor: thresholdReached ? "rgba(220, 53, 69, 0.9)" : "rgba(0, 0, 0, 0.8)",
           color: "white",
           padding: "8px 16px",
           borderRadius: "8px",
@@ -306,6 +322,8 @@ export const TransferAnimation: React.FC = () => {
           whiteSpace: "nowrap",
           fontFamily: "monospace",
           zIndex: 10,
+          opacity: blinkOpacity,
+          transition: "background-color 0.2s ease",
         }}
       >
         Wallet: {Math.round(currentWalletBalance)}
