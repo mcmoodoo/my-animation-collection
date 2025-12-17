@@ -44,7 +44,7 @@ export const WalletAnimation: React.FC = () => {
 
   // USDC tokens configuration - flow from left into wallet
   const tokenSourceX = -500; // Start position (left side, off-screen)
-  const tokensStartFrame = 10; // When tokens start flowing in
+  const tokensStartFrame = 5; // When tokens start flowing in
   
   const incomingTokens = [
     { delay: 0, rotation: 10, scale: 0.6, offsetX: 0, offsetY: 0 },
