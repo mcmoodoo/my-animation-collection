@@ -53,31 +53,43 @@ export const FlowchartAnimation: React.FC = () => {
       frame: frame - phaseStart,
       fps,
       config: {
-        damping: 100,
-        stiffness: 200,
+        damping: 80,
+        stiffness: 300,
       },
     });
   };
 
-  // Node highlight animation
+  // Node highlight animation with dramatic pulse
   const getNodeHighlight = (phaseStart: number, phaseEnd: number) => {
     if (frame < phaseStart) return 0;
-    if (frame > phaseEnd + 30) return 0; // Fade out after phase ends
+    if (frame > phaseEnd) {
+      // Fade out smoothly after phase ends
+      const fadeOutProgress = interpolate(
+        frame - phaseEnd,
+        [0, 20],
+        [1, 0],
+        {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        }
+      );
+      return fadeOutProgress;
+    }
     
     const highlightProgress = spring({
       frame: frame - phaseStart,
       fps,
       config: {
-        damping: 100,
-        stiffness: 200,
+        damping: 80,
+        stiffness: 300,
       },
     });
     
-    // Pulse effect - fade in and out
+    // Strong pulse effect
     const pulse = interpolate(
-      (frame - phaseStart) % 40,
-      [0, 20, 40],
-      [0.3, 1, 0.3],
+      (frame - phaseStart) % 30,
+      [0, 15, 30],
+      [0.5, 1, 0.5],
       {
         extrapolateLeft: "clamp",
         extrapolateRight: "clamp",
@@ -85,6 +97,71 @@ export const FlowchartAnimation: React.FC = () => {
     );
     
     return Math.max(highlightProgress, pulse);
+  };
+
+  // Node scale animation - dramatic bounce when activated
+  const getNodeScale = (phaseStart: number, phaseEnd: number) => {
+    if (frame < phaseStart) return 1;
+    if (frame > phaseEnd) {
+      // Return to normal scale smoothly after phase ends
+      const returnProgress = spring({
+        frame: frame - phaseEnd,
+        fps,
+        config: {
+          damping: 100,
+          stiffness: 300,
+        },
+      });
+      return interpolate(
+        returnProgress,
+        [0, 1],
+        [1.1, 1], // Start from slightly scaled, return to 1
+        {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        }
+      );
+    }
+    
+    const phaseFrame = frame - phaseStart;
+    const scaleProgress = spring({
+      frame: phaseFrame,
+      fps,
+      config: {
+        damping: 60,
+        stiffness: 400,
+      },
+    });
+    
+    // Bounce effect: scale up then settle
+    const bounce = interpolate(
+      scaleProgress,
+      [0, 0.3, 0.6, 1],
+      [1, 1.3, 0.95, 1.1],
+      {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      }
+    );
+    
+    // Continuous pulse while active
+    const pulse = interpolate(
+      (frame - phaseStart) % 40,
+      [0, 20, 40],
+      [1, 1.15, 1],
+      {
+        extrapolateLeft: "clamp",
+        extrapolateRight: "clamp",
+      }
+    );
+    
+    return Math.max(bounce, pulse);
+  };
+
+  // Particle position along path (0 to 1)
+  const getParticlePosition = (progress: number, offset: number = 0) => {
+    const particleProgress = (progress + offset) % 1;
+    return Math.max(0, Math.min(1, particleProgress));
   };
 
   // Edge 1: SourceWallet -> Keeper (approve) - Phase 1
@@ -112,14 +189,34 @@ export const FlowchartAnimation: React.FC = () => {
   );
   const safeHighlight = getNodeHighlight(phase4Start, phase4End);
 
+  // Node scales
+  const sourceScale = getNodeScale(phase1Start, phase1End);
+  const eventScale = getNodeScale(phase2Start, phase2End);
+  const keeperScale = getNodeScale(phase2Start, phase4End);
+  const rpcScale = Math.max(
+    getNodeScale(phase3Start, phase3End),
+    getNodeScale(phase4Start, phase4End)
+  );
+  const safeScale = getNodeScale(phase4Start, phase4End);
+
+  // Background color shift based on active phase
+  const getBgColor = () => {
+    if (frame < phase2Start) return "#F8FAFC";
+    if (frame < phase3Start) return "#FFF7ED";
+    if (frame < phase4Start) return "#F0FDF4";
+    return "#FEF2F2";
+  };
+  const bgColor = getBgColor();
+
   return (
     <AbsoluteFill
       style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#F8FAFC",
+        backgroundColor: bgColor,
         padding: "40px",
+        transition: "background-color 0.3s ease",
       }}
     >
       <div
@@ -141,6 +238,8 @@ export const FlowchartAnimation: React.FC = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            position: "relative",
+            zIndex: 1,
           }}
         >
           <Img
@@ -150,6 +249,8 @@ export const FlowchartAnimation: React.FC = () => {
               width: "100%",
               height: "100%",
               objectFit: "contain",
+              position: "relative",
+              zIndex: 1,
             }}
           />
         </div>
@@ -170,11 +271,28 @@ export const FlowchartAnimation: React.FC = () => {
         >
           <g transform="scale(1 1) rotate(0) translate(4 328.9)">
             {/* Edge 5: Event -> Keeper */}
+            {/* Glow trail */}
             <path
               d="M315.54,-97.46C414.64,-116.24 549.69,-141.84 637.48,-158.48"
               fill="none"
               stroke="#f59e0b"
-              strokeWidth="4"
+              strokeWidth="12"
+              strokeDasharray="8,4"
+              strokeDashoffset={interpolate(
+                edge5Progress,
+                [0, 1],
+                [400, 0],
+                { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+              )}
+              opacity={edge5Progress > 0 ? Math.min(edge5Progress * 2, 1) * 0.4 : 0}
+              filter="url(#glow-strong)"
+            />
+            {/* Main path */}
+            <path
+              d="M315.54,-97.46C414.64,-116.24 549.69,-141.84 637.48,-158.48"
+              fill="none"
+              stroke="#f59e0b"
+              strokeWidth="6"
               strokeDasharray="8,4"
               strokeDashoffset={interpolate(
                 edge5Progress,
@@ -184,6 +302,23 @@ export const FlowchartAnimation: React.FC = () => {
               )}
               opacity={edge5Progress > 0 ? Math.min(edge5Progress * 2, 1) : 0}
             />
+            {/* Animated particle */}
+            {edge5Progress > 0 && edge5Progress < 1 && (() => {
+              const particlePos = getParticlePosition(edge5Progress, 0);
+              const t = particlePos;
+              const x = 315.54 + (637.48 - 315.54) * t;
+              const y = -97.46 + (-158.48 - (-97.46)) * t;
+              return (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="8"
+                  fill="#f59e0b"
+                  opacity={1}
+                  filter="url(#glow-strong)"
+                />
+              );
+            })()}
             {/* Arrowhead for edge 5 */}
             {edge5Progress > 0.8 && (
               <polygon
@@ -195,15 +330,33 @@ export const FlowchartAnimation: React.FC = () => {
                   [0, 1],
                   { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
                 )}
+                filter="url(#glow-strong)"
               />
             )}
             
             {/* Edge 1: SourceWallet -> Keeper */}
+            {/* Glow trail */}
             <path
               d="M259.81,-263.81C357.27,-245.33 531.81,-212.25 637.61,-192.2"
               fill="none"
               stroke="#3b82f6"
-              strokeWidth="4"
+              strokeWidth="12"
+              strokeDasharray="8,4"
+              strokeDashoffset={interpolate(
+                edge1Progress,
+                [0, 1],
+                [400, 0],
+                { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+              )}
+              opacity={edge1Progress > 0 ? Math.min(edge1Progress * 2, 1) * 0.4 : 0}
+              filter="url(#glow-strong)"
+            />
+            {/* Main path */}
+            <path
+              d="M259.81,-263.81C357.27,-245.33 531.81,-212.25 637.61,-192.2"
+              fill="none"
+              stroke="#3b82f6"
+              strokeWidth="6"
               strokeDasharray="8,4"
               strokeDashoffset={interpolate(
                 edge1Progress,
@@ -213,6 +366,23 @@ export const FlowchartAnimation: React.FC = () => {
               )}
               opacity={edge1Progress > 0 ? Math.min(edge1Progress * 2, 1) : 0}
             />
+            {/* Animated particle */}
+            {edge1Progress > 0 && edge1Progress < 1 && (() => {
+              const particlePos = getParticlePosition(edge1Progress, 0);
+              const t = particlePos;
+              const x = 259.81 + (637.61 - 259.81) * t;
+              const y = -263.81 + (-192.2 - (-263.81)) * t;
+              return (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="8"
+                  fill="#3b82f6"
+                  opacity={1}
+                  filter="url(#glow-strong)"
+                />
+              );
+            })()}
             {/* Arrowhead for edge 1 */}
             {edge1Progress > 0.8 && (
               <polygon
@@ -224,15 +394,33 @@ export const FlowchartAnimation: React.FC = () => {
                   [0, 1],
                   { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
                 )}
+                filter="url(#glow-strong)"
               />
             )}
             
             {/* Edge 2: Keeper -> RPC (check balance) */}
+            {/* Glow trail */}
             <path
               d="M802.14,-162.23C890.01,-146.58 1036.74,-120.44 1130.05,-103.81"
               fill="none"
               stroke="#10b981"
-              strokeWidth="4"
+              strokeWidth="12"
+              strokeDasharray="8,4"
+              strokeDashoffset={interpolate(
+                edge2Progress,
+                [0, 1],
+                [400, 0],
+                { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+              )}
+              opacity={edge2Progress > 0 ? Math.min(edge2Progress * 2, 1) * 0.4 : 0}
+              filter="url(#glow-strong)"
+            />
+            {/* Main path */}
+            <path
+              d="M802.14,-162.23C890.01,-146.58 1036.74,-120.44 1130.05,-103.81"
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="6"
               strokeDasharray="8,4"
               strokeDashoffset={interpolate(
                 edge2Progress,
@@ -242,6 +430,23 @@ export const FlowchartAnimation: React.FC = () => {
               )}
               opacity={edge2Progress > 0 ? Math.min(edge2Progress * 2, 1) : 0}
             />
+            {/* Animated particle */}
+            {edge2Progress > 0 && edge2Progress < 1 && (() => {
+              const particlePos = getParticlePosition(edge2Progress, 0);
+              const t = particlePos;
+              const x = 802.14 + (1130.05 - 802.14) * t;
+              const y = -162.23 + (-103.81 - (-162.23)) * t;
+              return (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="8"
+                  fill="#10b981"
+                  opacity={1}
+                  filter="url(#glow-strong)"
+                />
+              );
+            })()}
             {/* Arrowhead for edge 2 */}
             {edge2Progress > 0.8 && (
               <polygon
@@ -253,15 +458,33 @@ export const FlowchartAnimation: React.FC = () => {
                   [0, 1],
                   { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
                 )}
+                filter="url(#glow-strong)"
               />
             )}
             
             {/* Edge 4: Keeper -> RPC (send transaction) */}
+            {/* Glow trail */}
             <path
               d="M773.24,-129.91C795.78,-110.23 824.78,-89.37 855.3,-79.1 945.3,-48.81 1055.15,-57.54 1129.99,-69.75"
               fill="none"
               stroke="#6b7280"
-              strokeWidth="4"
+              strokeWidth="12"
+              strokeDasharray="5,2"
+              strokeDashoffset={interpolate(
+                edge4Progress,
+                [0, 1],
+                [400, 0],
+                { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+              )}
+              opacity={edge4Progress > 0 ? Math.min(edge4Progress * 2, 1) * 0.4 : 0}
+              filter="url(#glow-strong)"
+            />
+            {/* Main path */}
+            <path
+              d="M773.24,-129.91C795.78,-110.23 824.78,-89.37 855.3,-79.1 945.3,-48.81 1055.15,-57.54 1129.99,-69.75"
+              fill="none"
+              stroke="#6b7280"
+              strokeWidth="6"
               strokeDasharray="5,2"
               strokeDashoffset={interpolate(
                 edge4Progress,
@@ -271,6 +494,23 @@ export const FlowchartAnimation: React.FC = () => {
               )}
               opacity={edge4Progress > 0 ? Math.min(edge4Progress * 2, 1) : 0}
             />
+            {/* Animated particle */}
+            {edge4Progress > 0 && edge4Progress < 1 && (() => {
+              const particlePos = getParticlePosition(edge4Progress, 0);
+              const t = particlePos;
+              const x = 773.24 + (1129.99 - 773.24) * t;
+              const y = -129.91 + (-69.75 - (-129.91)) * t;
+              return (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="8"
+                  fill="#6b7280"
+                  opacity={1}
+                  filter="url(#glow-strong)"
+                />
+              );
+            })()}
             {/* Arrowhead for edge 4 */}
             {edge4Progress > 0.8 && (
               <polygon
@@ -282,15 +522,33 @@ export const FlowchartAnimation: React.FC = () => {
                   [0, 1],
                   { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
                 )}
+                filter="url(#glow-strong)"
               />
             )}
             
             {/* Edge 3: Keeper -> SafeWallet */}
+            {/* Glow trail */}
             <path
               d="M802.14,-191.18C886.82,-209.39 1026.16,-239.35 1119.68,-259.46"
               fill="none"
               stroke="#ef4444"
-              strokeWidth="4"
+              strokeWidth="12"
+              strokeDasharray="8,4"
+              strokeDashoffset={interpolate(
+                edge3Progress,
+                [0, 1],
+                [400, 0],
+                { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+              )}
+              opacity={edge3Progress > 0 ? Math.min(edge3Progress * 2, 1) * 0.4 : 0}
+              filter="url(#glow-strong)"
+            />
+            {/* Main path */}
+            <path
+              d="M802.14,-191.18C886.82,-209.39 1026.16,-239.35 1119.68,-259.46"
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="6"
               strokeDasharray="8,4"
               strokeDashoffset={interpolate(
                 edge3Progress,
@@ -300,6 +558,23 @@ export const FlowchartAnimation: React.FC = () => {
               )}
               opacity={edge3Progress > 0 ? Math.min(edge3Progress * 2, 1) : 0}
             />
+            {/* Animated particle */}
+            {edge3Progress > 0 && edge3Progress < 1 && (() => {
+              const particlePos = getParticlePosition(edge3Progress, 0);
+              const t = particlePos;
+              const x = 802.14 + (1119.68 - 802.14) * t;
+              const y = -191.18 + (-259.46 - (-191.18)) * t;
+              return (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r="8"
+                  fill="#ef4444"
+                  opacity={1}
+                  filter="url(#glow-strong)"
+                />
+              );
+            })()}
             {/* Arrowhead for edge 3 */}
             {edge3Progress > 0.8 && (
               <polygon
@@ -311,95 +586,14 @@ export const FlowchartAnimation: React.FC = () => {
                   [0, 1],
                   { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
                 )}
-              />
-            )}
-          </g>
-        </svg>
-
-        {/* Node highlight overlays */}
-        <svg
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            pointerEvents: "none",
-            zIndex: 5,
-          }}
-          viewBox="0.00 0.00 1307.90 332.90"
-          preserveAspectRatio="xMidYMid meet"
-        >
-          <g transform="scale(1 1) rotate(0) translate(4 328.9)">
-            {/* Event node highlight */}
-            {eventHighlight > 0 && (
-              <ellipse
-                cx="187.35"
-                cy="-67.92"
-                rx="180"
-                ry="70"
-                fill="rgba(245, 158, 11, 0.3)"
-                opacity={eventHighlight}
-                filter="url(#glow)"
+                filter="url(#glow-strong)"
               />
             )}
             
-            {/* Source Wallet highlight */}
-            {sourceHighlight > 0 && (
-              <ellipse
-                cx="187.35"
-                cy="-277.3"
-                rx="80"
-                ry="50"
-                fill="rgba(99, 102, 241, 0.3)"
-                opacity={sourceHighlight}
-                filter="url(#glow)"
-              />
-            )}
-            
-            {/* Keeper highlight */}
-            {keeperHighlight > 0 && (
-              <ellipse
-                cx="727.5"
-                cy="-175.35"
-                rx="80"
-                ry="50"
-                fill="rgba(16, 185, 129, 0.3)"
-                opacity={keeperHighlight}
-                filter="url(#glow)"
-              />
-            )}
-            
-            {/* RPC highlight */}
-            {rpcHighlight > 0 && (
-              <ellipse
-                cx="1217.85"
-                cy="-88.35"
-                rx="80"
-                ry="50"
-                fill="rgba(124, 58, 237, 0.3)"
-                opacity={rpcHighlight}
-                filter="url(#glow)"
-              />
-            )}
-            
-            {/* Safe Wallet highlight */}
-            {safeHighlight > 0 && (
-              <ellipse
-                cx="1217.85"
-                cy="-280.35"
-                rx="80"
-                ry="50"
-                fill="rgba(5, 150, 105, 0.3)"
-                opacity={safeHighlight}
-                filter="url(#glow)"
-              />
-            )}
-            
-            {/* Glow filter definition */}
+            {/* Filter definitions */}
             <defs>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+              <filter id="glow-strong" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
                 <feMerge>
                   <feMergeNode in="coloredBlur"/>
                   <feMergeNode in="SourceGraphic"/>
@@ -409,21 +603,132 @@ export const FlowchartAnimation: React.FC = () => {
           </g>
         </svg>
 
-        {/* Phase labels */}
+        {/* Pulsing node overlays - matching actual node shapes, on top */}
+        <svg
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            pointerEvents: "none",
+            zIndex: 20,
+          }}
+          viewBox="0.00 0.00 1307.90 332.90"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          <g transform="scale(1 1) rotate(0) translate(4 328.9)">
+            {/* Event node - diamond shape pulsing */}
+            {eventHighlight > 0 && (
+              <g transform={`translate(187.35, -67.92) scale(${eventScale}) translate(-187.35, 67.92)`}>
+                <path
+                  d="M176.18,-142.33C176.18,-142.33 11.17,-77.72 11.17,-77.72 5.59,-75.54 5.59,-71.16 11.17,-68.98 11.17,-68.98 176.18,-4.37 176.18,-4.37 181.76,-2.19 192.94,-2.19 198.52,-4.37 198.52,-4.37 363.53,-68.98 363.53,-68.98 369.11,-71.16 369.11,-75.54 363.53,-77.72 363.53,-77.72 198.52,-142.33 198.52,-142.33 192.94,-144.51 181.76,-144.51 176.18,-142.33"
+                  fill="none"
+                  stroke="#f59e0b"
+                  strokeWidth="5"
+                  opacity={eventHighlight}
+                  filter="url(#glow-pulse)"
+                />
+              </g>
+            )}
+            
+            {/* Source Wallet - rounded rectangle pulsing */}
+            {sourceHighlight > 0 && (
+              <g transform={`translate(187.35, -277.3) scale(${sourceScale}) translate(-187.35, 277.3)`}>
+                <path
+                  d="M246.9,-321.9C246.9,-321.9 127.8,-321.9 127.8,-321.9 121.8,-321.9 115.8,-315.9 115.8,-309.9 115.8,-309.9 115.8,-244.8 115.8,-244.8 115.8,-238.8 121.8,-232.8 127.8,-232.8 127.8,-232.8 246.9,-232.8 246.9,-232.8 252.9,-232.8 258.9,-238.8 258.9,-244.8 258.9,-244.8 258.9,-309.9 258.9,-309.9 258.9,-315.9 252.9,-321.9 246.9,-321.9"
+                  fill="none"
+                  stroke="#6366f1"
+                  strokeWidth="5"
+                  opacity={sourceHighlight}
+                  filter="url(#glow-pulse)"
+                />
+              </g>
+            )}
+            
+            {/* Keeper - rounded rectangle pulsing */}
+            {keeperHighlight > 0 && (
+              <g transform={`translate(727.5, -175.35) scale(${keeperScale}) translate(-727.5, 175.35)`}>
+                <path
+                  d="M789.3,-219.9C789.3,-219.9 665.7,-219.9 665.7,-219.9 659.7,-219.9 653.7,-213.9 653.7,-207.9 653.7,-207.9 653.7,-142.8 653.7,-142.8 653.7,-136.8 659.7,-130.8 665.7,-130.8 665.7,-130.8 789.3,-130.8 789.3,-130.8 795.3,-130.8 801.3,-136.8 801.3,-142.8 801.3,-142.8 801.3,-207.9 801.3,-207.9 801.3,-213.9 795.3,-219.9 789.3,-219.9"
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="5"
+                  opacity={keeperHighlight}
+                  filter="url(#glow-pulse)"
+                />
+              </g>
+            )}
+            
+            {/* RPC - rounded rectangle pulsing */}
+            {rpcHighlight > 0 && (
+              <g transform={`translate(1217.85, -88.35) scale(${rpcScale}) translate(-1217.85, 88.35)`}>
+                <path
+                  d="M1277.4,-132.9C1277.4,-132.9 1158.3,-132.9 1158.3,-132.9 1152.3,-132.9 1146.3,-126.9 1146.3,-120.9 1146.3,-120.9 1146.3,-55.8 1146.3,-55.8 1146.3,-49.8 1152.3,-43.8 1158.3,-43.8 1158.3,-43.8 1277.4,-43.8 1277.4,-43.8 1283.4,-43.8 1289.4,-49.8 1289.4,-55.8 1289.4,-55.8 1289.4,-120.9 1289.4,-120.9 1289.4,-126.9 1283.4,-132.9 1277.4,-132.9"
+                  fill="none"
+                  stroke="#7c3aed"
+                  strokeWidth="5"
+                  opacity={rpcHighlight}
+                  filter="url(#glow-pulse)"
+                />
+              </g>
+            )}
+            
+            {/* Safe Wallet - rounded rectangle pulsing */}
+            {safeHighlight > 0 && (
+              <g transform={`translate(1217.85, -280.35) scale(${safeScale}) translate(-1217.85, 280.35)`}>
+                <path
+                  d="M1287.9,-324.9C1287.9,-324.9 1147.8,-324.9 1147.8,-324.9 1141.8,-324.9 1135.8,-318.9 1135.8,-312.9 1135.8,-312.9 1135.8,-247.8 1135.8,-247.8 1135.8,-241.8 1141.8,-235.8 1147.8,-235.8 1147.8,-235.8 1287.9,-235.8 1287.9,-235.8 1293.9,-235.8 1299.9,-241.8 1299.9,-247.8 1299.9,-247.8 1299.9,-312.9 1299.9,-312.9 1299.9,-318.9 1293.9,-324.9 1287.9,-324.9"
+                  fill="none"
+                  stroke="#059669"
+                  strokeWidth="5"
+                  opacity={safeHighlight}
+                  filter="url(#glow-pulse)"
+                />
+              </g>
+            )}
+            
+            {/* Glow filter for pulsing effect */}
+            <defs>
+              <filter id="glow-pulse" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+          </g>
+        </svg>
+
+        {/* Phase labels with dramatic styling */}
         <div
           style={{
             position: "absolute",
             bottom: "40px",
             left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            transform: `translateX(-50%) scale(${interpolate(
+              frame % 60,
+              [0, 5, 55, 60],
+              [1, 1.05, 1.05, 1],
+              { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+            )})`,
+            backgroundColor: (() => {
+              if (frame < phase2Start) return "rgba(99, 102, 241, 0.95)";
+              if (frame < phase3Start) return "rgba(245, 158, 11, 0.95)";
+              if (frame < phase4Start) return "rgba(16, 185, 129, 0.95)";
+              return "rgba(239, 68, 68, 0.95)";
+            })(),
             color: "white",
-            padding: "12px 24px",
-            borderRadius: "8px",
-            fontSize: "18px",
+            padding: "16px 32px",
+            borderRadius: "12px",
+            fontSize: "22px",
             fontWeight: "bold",
             fontFamily: "Arial",
             zIndex: 20,
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+            textShadow: "2px 2px 4px rgba(0, 0, 0, 0.5)",
+            transition: "all 0.3s ease",
           }}
         >
           {frame < phase2Start && "Phase 1: Source Wallet approves Keeper"}
