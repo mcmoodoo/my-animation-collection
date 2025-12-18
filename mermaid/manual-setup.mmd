@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant Source as Source Wallet
+    participant Keeper as Keeper (Lambda/Bot)
+    participant RPC as RPC / Blockchain
+    participant Safe as Safe Wallet
+
+    Source->>Keeper: approve(keeper, amount)
+    loop Monitor Balance
+        Keeper->>RPC: check balanceOf(Source) or listen Transfer events
+        alt balance >= threshold
+            Keeper->>RPC: send transferFrom(Source, Safe, balance)
+            RPC->>Safe: USDC received
+        end
+    end

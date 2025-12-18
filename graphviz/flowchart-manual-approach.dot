@@ -1,19 +1,109 @@
 digraph USDC_Sweeper {
     rankdir=LR;
-    node [shape=box, style=rounded, fontname="Arial"];
+    bgcolor="#F8FAFC";
+    fontname="Arial";
+    fontsize=14;
+    splines=spline;
+    nodesep=1.2;
+    ranksep=1.5;
+    
+    // Node styling
+    node [
+        shape=box,
+        style="rounded,filled",
+        fontname="Arial",
+        fontsize=14,
+        penwidth=2.5,
+        margin=0.4,
+        height=0.6
+    ];
+    
+    // Edge styling
+    edge [
+        fontname="Arial",
+        fontsize=12,
+        penwidth=2.5,
+        arrowsize=1.2
+    ];
 
-    SourceWallet [label="Source Wallet\n(Holds USDC)"];
-    Keeper [label="Keeper\n(Lambda / Bot)"];
-    SafeWallet [label="Safe Wallet\n(Receives USDC)"];
-    RPC [label="RPC Endpoint\n(Blockchain)"];
+    // Source Wallet - Indigo colors
+    SourceWallet [
+        label="Source Wallet\n(Holds USDC)",
+        fillcolor="#6366F1",
+        color="#312E81",
+        fontcolor=white
+    ];
+    
+    // Keeper - Green colors
+    Keeper [
+        label="Keeper\n(Lambda / Bot)",
+        fillcolor="#10B981",
+        color="#047857",
+        fontcolor=white
+    ];
+    
+    // Safe Wallet - Darker green
+    SafeWallet [
+        label="Safe Wallet\n(Receives USDC)",
+        fillcolor="#059669",
+        color="#065F46",
+        fontcolor=white
+    ];
+    
+    // RPC Endpoint - Purple
+    RPC [
+        label="RPC Endpoint\n(Blockchain)",
+        fillcolor="#7C3AED",
+        color="#5B21B6",
+        fontcolor=white
+    ];
+    
+    // Event Trigger - Amber/Orange
+    Event [
+        label="Cron or Event Trigger",
+        shape=diamond,
+        fillcolor="#F59E0B",
+        color="#92400E",
+        fontcolor=white,
+        style="rounded,filled"
+    ];
 
-    // Actions
-    SourceWallet -> Keeper [label="USDC.approve(keeper, amount)", color=blue];
-    Keeper -> RPC [label="Check balance / Listen to Transfer events", color=green];
-    Keeper -> SafeWallet [label="USDC.transferFrom(source, safe, balance)", color=red];
-    Keeper -> RPC [label="Send transaction (gas paid by keeper)", style=dashed];
+    // Actions with styled edges
+    SourceWallet -> Keeper [
+        label="USDC.approve(keeper, amount)",
+        color="#3B82F6",
+        fontcolor="#1E40AF",
+        penwidth=2.5
+    ];
+    
+    Keeper -> RPC [
+        label="Check balance / Listen to Transfer events",
+        color="#10B981",
+        fontcolor="#065F46",
+        penwidth=2.5
+    ];
+    
+    Keeper -> SafeWallet [
+        label="USDC.transferFrom(source, safe, balance)",
+        color="#EF4444",
+        fontcolor="#991B1B",
+        penwidth=2.5
+    ];
+    
+    Keeper -> RPC [
+        label="Send transaction (gas paid by keeper)",
+        style=dashed,
+        color="#6B7280",
+        fontcolor="#374151",
+        penwidth=2.5
+    ];
 
-    // Optional triggers
-    Event [label="Cron or Event Trigger", shape=diamond];
-    Event -> Keeper [label="Run keeper", style=dotted];
+    // Event trigger
+    Event -> Keeper [
+        label="Run keeper",
+        style=dotted,
+        color="#F59E0B",
+        fontcolor="#92400E",
+        penwidth=2.5
+    ];
 }
