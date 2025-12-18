@@ -60,7 +60,7 @@ digraph USDC_Sweeper {
     
     // Event Trigger - Amber/Orange
     Event [
-        label="Cron or Event Trigger",
+        label="Cron or Event Trigger (AWS EventBridge or GH Actions)",
         shape=diamond,
         fillcolor="#F59E0B",
         color="#92400E",

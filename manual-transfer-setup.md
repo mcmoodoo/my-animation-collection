@@ -61,7 +61,7 @@ Now, we can compare it to a relatively simple setup with guaranteed execution vi
 
 ### Problem
 
-Let's say you have multiple wallets and want to monitor a specific token (show multiple tokens with two having over $5 balance - due for sweeping). I’m using a stablecoin in this example just to keep things simple(mark as USDC). When a wallet’s balance crosses a set threshold, you automatically sweep the entire amount into a consolidation wallet (animation of a broom sweeping up the stablecoin from those two wallets, Mimic being the janitor and doing all the dirty work).
+Let's say you want to monitor a specific token in your wallet (for simplicity, a USDC stable coin). When a wallet’s balance crosses a set threshold, you automatically sweep the entire amount into a consolidation wallet.
 
 Why would you want to do it?
 
