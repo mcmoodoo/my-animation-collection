@@ -5,6 +5,7 @@ import { Logo, myCompSchema2 } from "./HelloWorld/Logo";
 import { WalletAnimation } from "./WalletAnimation";
 import { TransferAnimation } from "./TransferAnimation";
 import { FlowchartAnimation } from "./FlowchartAnimation";
+import { MimicArchitectureAnimation } from "./MimicArchitectureAnimation";
 
 // Each <Composition> is an entry in the sidebar!
 
@@ -64,6 +65,14 @@ export const RemotionRoot: React.FC = () => {
         id="FlowchartAnimation"
         component={FlowchartAnimation}
         durationInFrames={300}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="MimicArchitectureAnimation"
+        component={MimicArchitectureAnimation}
+        durationInFrames={600}
         fps={30}
         width={1920}
         height={1080}
